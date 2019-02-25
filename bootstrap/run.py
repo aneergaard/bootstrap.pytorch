@@ -1,27 +1,28 @@
 import os
-import click
 import traceback
+
+import click
 import torch
 import torch.backends.cudnn as cudnn
 
-from .lib import utils
-from .lib.logger import Logger
-from .lib.options import Options
-from . import engines
 from . import datasets
+from . import engines
 from . import models
 from . import optimizers
 from . import views
+from .lib import utils
+from .lib.logger import Logger
+from .lib.options import Options
 
 
 def init_experiment_directory(exp_dir, resume=None):
-    # create the experiment directory
+    #  create the experiment directory
     if not os.path.isdir(exp_dir):
         os.system('mkdir -p ' + exp_dir)
     else:
         if resume is None:
             if click.confirm('Exp directory already exists in {}. Erase?'
-                    .format(exp_dir, default=False)):
+                                     .format(exp_dir, default=False)):
                 os.system('rm -r ' + exp_dir)
                 os.system('mkdir -p ' + exp_dir)
             else:
@@ -42,7 +43,7 @@ def init_logs_options_files(exp_dir, resume=None):
         path_yaml = os.path.join(exp_dir, 'options.yaml')
         logs_name = 'logs'
 
-    # create the options.yaml file
+    #  create the options.yaml file
     if not os.path.isfile(path_yaml):
         Options().save(path_yaml)
 
@@ -59,14 +60,14 @@ def run(path_opts=None):
     init_experiment_directory(Options()['exp']['dir'], Options()['exp']['resume'])
     init_logs_options_files(Options()['exp']['dir'], Options()['exp']['resume'])
 
-    Logger().log_dict('options', Options(), should_print=True) # display options
-    Logger()(os.uname()) # display server name
+    Logger().log_dict('options', Options(), should_print=True)  # display options
+    Logger()(os.uname())  # display server name
 
     if torch.cuda.is_available():
         cudnn.benchmark = True
         Logger()('Available GPUs: {}'.format(utils.available_gpu_ids()))
 
-    # engine can train, eval, optimize the model
+    #  engine can train, eval, optimize the model
     # engine can save and load the model and optimizer
     engine = engines.factory()
 
@@ -80,7 +81,7 @@ def run(path_opts=None):
     # note: model can access to datasets using engine.dataset
     engine.model = models.factory(engine)
 
-    # optimizer can register engine hooks
+    #  optimizer can register engine hooks
     engine.optimizer = optimizers.factory(engine.model, engine)
 
     # view will save a view.html in the experiment directory
@@ -120,4 +121,3 @@ def main(path_opts=None, run=None):
 
 if __name__ == '__main__':
     main(run=run)
-

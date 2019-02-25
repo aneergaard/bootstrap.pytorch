@@ -7,6 +7,8 @@ import threading
 from ..lib import utils
 from ..lib.options import Options
 from ..lib.logger import Logger
+from tqdm import tqdm
+from time import sleep
 
 class Engine(object):
     """Contains training and evaluation procedures
@@ -148,6 +150,7 @@ class Engine(object):
             - train_on_flush: end of the training procedure for an epoch
         """
         utils.set_random_seed(Options()['misc']['seed'] + epoch) # to be able to reproduce exps on reload
+        sleep(0.1)
         Logger()('Training model on {}set for epoch {}'.format(dataset.split, epoch))
         model.train()
 
@@ -162,7 +165,9 @@ class Engine(object):
         batch_loader = dataset.make_batch_loader()
 
         self.hook('train_on_start_epoch')
-        for i, batch in enumerate(batch_loader):
+        bar_train = tqdm(batch_loader, total=len(batch_loader))
+        # for i, batch in tqdm(enumerate(batch_loader), total=len(batch_loader)-1):
+        for i, batch in enumerate(bar_train):
             timer['load'] = time.time() - timer['elapsed']
             self.hook('train_on_start_batch')
 
@@ -204,14 +209,16 @@ class Engine(object):
                 out_epoch[key].append(value)
                 Logger().log_value('train_batch.'+key, value, should_print=False)
 
-            if i % Options()['engine']['print_freq'] == 0:
-                Logger()("{}: epoch {} | batch {}/{}".format(mode, epoch, i, len(batch_loader) - 1))
-                Logger()("{} elapsed: {} | left: {}".format(' '*len(mode),
-                    datetime.timedelta(seconds=math.floor(time.time() - timer['begin'])),
-                    datetime.timedelta(seconds=math.floor(timer['run_avg'] * (len(batch_loader) - 1 - i)))))
-                Logger()("{} process: {:.5f} | load: {:.5f}".format(' '*len(mode), timer['process'], timer['load']))
-                Logger()("{} loss: {:.5f}".format(' '*len(mode), out['loss'].data.item()))
-                self.hook('train_on_print')
+
+            # if i % Options()['engine']['print_freq'] == 0:
+            #     Logger()("{}: epoch {} | batch {}/{}".format(mode, epoch, i, len(batch_loader) - 1))
+            #     Logger()("{} elapsed: {} | left: {}".format(' '*len(mode),
+            #         datetime.timedelta(seconds=math.floor(time.time() - timer['begin'])),
+            #         datetime.timedelta(seconds=math.floor(timer['run_avg'] * (len(batch_loader) - 1 - i)))))
+            #     Logger()("{} process: {:.5f} | load: {:.5f}".format(' '*len(mode), timer['process'], timer['load']))
+            #     Logger()("{} loss: {:.5f}".format(' '*len(mode), out['loss'].data.item()))
+            #     self.hook('train_on_print')
+            bar_train.set_description('{}: epoch {} | loss: {:.5f}'.format(mode, epoch, out['loss'].data.item()))
 
             timer['elapsed'] = time.time()
             self.hook('train_on_end_batch')
@@ -219,6 +226,8 @@ class Engine(object):
             if Options()['engine']['debug']:
                 if i > 2:
                     break
+
+        sleep(0.1)
 
         Logger().log_value('train_epoch.epoch', epoch, should_print=True)
         for key, value in out_epoch.items():
@@ -245,6 +254,7 @@ class Engine(object):
             Returns:
                 out(dict): mean of all the scalar outputs of the model, indexed by output name, for this epoch
         """
+        sleep(0.1)
         utils.set_random_seed(Options()['misc']['seed'] + epoch) # to be able to reproduce exps on reload
         Logger()('Evaluating model on {}set for epoch {}'.format(dataset.split, epoch))
         model.eval()
@@ -260,7 +270,8 @@ class Engine(object):
         batch_loader = dataset.make_batch_loader()
 
         self.hook('{}_on_start_epoch'.format(mode))
-        for i, batch in enumerate(batch_loader):
+        bar_eval = tqdm(batch_loader, total=len(batch_loader))
+        for i, batch in enumerate(bar_eval):
             timer['load'] = time.time() - timer['elapsed']
             self.hook('{}_on_start_batch'.format(mode))
 
@@ -295,14 +306,15 @@ class Engine(object):
                 out_epoch[key].append(value)
                 Logger().log_value('{}_batch.{}'.format(mode, key), value, should_print=False)
 
-            if i % Options()['engine']['print_freq'] == 0:
-                Logger()("{}: epoch {} | batch {}/{}".format(mode, epoch, i, len(batch_loader) - 1))
-                Logger()("{}  elapsed: {} | left: {}".format(' '*len(mode), 
-                    datetime.timedelta(seconds=math.floor(time.time() - timer['begin'])),
-                    datetime.timedelta(seconds=math.floor(timer['run_avg'] * (len(batch_loader) - 1 - i)))))
-                Logger()("{}  process: {:.5f} | load: {:.5f}".format(' '*len(mode), timer['process'], timer['load']))
-                self.hook('{}_on_print'.format(mode))
-            
+            # if i % Options()['engine']['print_freq'] == 0:
+            #     Logger()("{}: epoch {} | batch {}/{}".format(mode, epoch, i, len(batch_loader) - 1))
+            #     Logger()("{}  elapsed: {} | left: {}".format(' '*len(mode),
+            #         datetime.timedelta(seconds=math.floor(time.time() - timer['begin'])),
+            #         datetime.timedelta(seconds=math.floor(timer['run_avg'] * (len(batch_loader) - 1 - i)))))
+            #     Logger()("{}  process: {:.5f} | load: {:.5f}".format(' '*len(mode), timer['process'], timer['load']))
+            #     self.hook('{}_on_print'.format(mode))
+            bar_eval.set_description('{}: epoch {} | loss: {:.5f}'.format(mode, epoch, out['loss'].data.item()))
+
             timer['elapsed'] = time.time()
             self.hook('{}_on_end_batch'.format(mode))
 
@@ -310,6 +322,7 @@ class Engine(object):
                 if i > 10:
                     break
 
+        sleep(0.1)
         out = {}
         for key, value in out_epoch.items():
             try:
