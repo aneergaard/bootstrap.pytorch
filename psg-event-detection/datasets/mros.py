@@ -404,7 +404,7 @@ if __name__ == '__main__':
     # eval_dataset = MrOS(cohort='mros', split='eval')
     # test_dataset = MrOS(cohort='mros', split='test')
 
-    for psg, event in train_dataset:
-        print('')
+    for psg, event in tqdm(train_dataset, total=train_dataset.__len__()):
+        pass
 
     print('')
